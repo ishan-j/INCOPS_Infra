@@ -5,18 +5,22 @@ pipeline {
         DOCKER_USER = 'ishanj10'
         BACKEND_REPO = 'https://github.com/ishan-j/INCOPS_Backend.git'
         FRONTEND_REPO = 'https://github.com/ishan-j/INCOPS_Frontend.git'
+        // Hardcode your Minikube IP if 'minikube ip' continues to fail in Jenkins
+        MINIKUBE_IP = '192.168.49.2' 
     }
 
     stages {
         stage('Cleanup & Checkout') {
             steps {
-                deleteDir() 
-                checkout scm // REQUIRED: This brings back your 'docker' and 'k8s' folders
+                deleteDir()
+                // 1. Re-checkout the INFRA repo (this brings back docker/ and k8s/ folders)
+                checkout scm 
                 
+                // 2. Clone application code into subfolders
                 dir('backend') { git url: "${BACKEND_REPO}", branch: 'main' }
                 dir('frontend') { git url: "${FRONTEND_REPO}", branch: 'main' }
                 
-                sh "ls -R" // Verify files are present in the Jenkins console
+                sh "ls -R" // Verify the 'docker' folder is now visible
             }
         }
 
@@ -24,6 +28,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'dockerhub-creds') {
+                        // Context is '.' so it can see the 'backend' folder
                         def backendImg = docker.build("${DOCKER_USER}/incops-backend:latest", "-f docker/backend.Dockerfile .")
                         backendImg.push()
                     }
@@ -34,22 +39,20 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 script {
-                    // Try to get Minikube IP; fallback to default if command fails
-                    def minikubeIp = sh(script: "minikube ip || echo '192.168.49.2'", returnStdout: true).trim()
-                    
                     docker.withRegistry('', 'dockerhub-creds') {
-                        // Pass API URL as a build argument using the Minikube IP and Backend NodePort
-                        def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${minikubeIp}:30001 -f docker/frontend.Dockerfile .")
+                        // Using the IP defined in environment
+                        def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${MINIKUBE_IP}:30001 -f docker/frontend.Dockerfile .")
                         frontendImg.push()
                     }
                 }
             }
         }
 
-        stage('Deploy to Minikube') {
+        stage('Deploy to Kubernetes') {
             steps {
-                // Apply all 3 layers: DB, Backend, and Frontend
+                // Ensure we apply the new frontend-deployment.yaml you created
                 sh "kubectl apply -f k8s/configmap.yaml"
+                sh "kubectl apply -f k8s/mysql-init-config.yaml" // The table creator
                 sh "kubectl apply -f k8s/mysql-deployment.yaml"
                 sh "kubectl apply -f k8s/backend-deployment.yaml"
                 sh "kubectl apply -f k8s/frontend-deployment.yaml"
