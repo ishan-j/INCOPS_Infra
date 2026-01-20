@@ -52,7 +52,7 @@ pipeline {
             steps {
                 // Ensure we apply the new frontend-deployment.yaml you created
                 sh "kubectl apply -f k8s/configmap.yaml"
-                sh "kubectl apply -f k8s/mysql-init-config.yaml" // The table creator
+                sh "kubectl apply -f k8s/init-db-config.yaml" // The table creator
                 sh "kubectl apply -f k8s/mysql-deployment.yaml"
                 sh "kubectl apply -f k8s/backend-deployment.yaml"
                 sh "kubectl apply -f k8s/frontend-deployment.yaml"
