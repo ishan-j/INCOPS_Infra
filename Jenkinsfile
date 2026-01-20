@@ -13,6 +13,7 @@ pipeline {
         }
         stage('Checkout Code') {
             steps {
+                // Cloning the application repos into subfolders
                 dir('backend') { git url: "${BACKEND_REPO}", branch: 'main' }
                 dir('frontend') { git url: "${FRONTEND_REPO}", branch: 'main' }
             }
@@ -21,6 +22,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'dockerhub-creds') {
+                        // Correct pathing: Dockerfile is in infra-repo root/docker/
                         def backendImg = docker.build("${DOCKER_USER}/incops-backend:latest", "-f docker/backend.Dockerfile .")
                         backendImg.push()
                     }
@@ -30,12 +32,11 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 script {
+                    // 1. Get IP first
+                    def minikubeIp = sh(script: "minikube ip", returnStdout: true).trim()
+                    
+                    // 2. Build and push inside ONE registry block
                     docker.withRegistry('', 'dockerhub-creds') {
-                        // Pass the Minikube IP/Port as build-arg
-                        // def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://$(minikube ip):30001 -f docker/frontend.Dockerfile .")
-                        // frontendImg.push()
-                        def minikubeIp = sh(script: "minikube ip", returnStdout: true).trim()
-                        docker.withRegistry('', 'dockerhub-creds') {
                         def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${minikubeIp}:30001 -f docker/frontend.Dockerfile .")
                         frontendImg.push()
                     }
@@ -44,6 +45,7 @@ pipeline {
         }
         stage('Deploy to Minikube') {
             steps {
+                // Ensure Jenkins has the 'kubectl' context for Minikube
                 sh "kubectl apply -f k8s/configmap.yaml"
                 sh "kubectl apply -f k8s/mysql-deployment.yaml"
                 sh "kubectl apply -f k8s/backend-deployment.yaml"
