@@ -46,23 +46,16 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 script {
-                    // Get Minikube IP to inject into the React build
-                    def minikubeIp
-                    try {
-                        minikubeIp = sh(script: "minikube ip", returnStdout: true).trim()
-                    } catch (Exception e) {
-                        // Use the default Minikube IP if the command fails
-                        minikubeIp = "192.168.49.2" 
-                        echo "Minikube command failed, using fallback IP: ${minikubeIp}"
-                    }
-                    
-                    docker.withRegistry('', 'dockerhub-creds') {
-                        def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${minikubeIp}:30001 -f docker/frontend.Dockerfile .")
-                        frontendImg.push()
-                    }
-                }
-            }
+       
+                 def hostIp = sh(script: "hostname -I | awk '{print \$1}'", returnStdout: true).trim()
+            
+                 docker.withRegistry('', 'dockerhub-creds') {
+                    def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${hostIp}:30001 -f docker/frontend.Dockerfile .")
+                    frontendImg.push()
+                    }  
         }
+    }
+}
 
         stage('Deploy to Kubernetes') {
             steps {
