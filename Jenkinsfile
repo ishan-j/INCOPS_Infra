@@ -10,13 +10,13 @@ pipeline {
     stages {
         stage('Cleanup & Checkout') {
             steps {
-                deleteDir()
-                checkout scm // Brings back your docker/ and k8s/ folders
+                deleteDir() 
+                checkout scm // REQUIRED: This brings back your 'docker' and 'k8s' folders
                 
                 dir('backend') { git url: "${BACKEND_REPO}", branch: 'main' }
                 dir('frontend') { git url: "${FRONTEND_REPO}", branch: 'main' }
                 
-                sh "ls -R" // Confirms files are present
+                sh "ls -R" // Verify files are present in the Jenkins console
             }
         }
 
@@ -34,11 +34,11 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 script {
-                    // Get the Minikube IP. If it fails, we use the standard default.
+                    // Try to get Minikube IP; fallback to default if command fails
                     def minikubeIp = sh(script: "minikube ip || echo '192.168.49.2'", returnStdout: true).trim()
                     
                     docker.withRegistry('', 'dockerhub-creds') {
-                        // In Minikube, we use NodePort 30001 for the Backend API
+                        // Pass API URL as a build argument using the Minikube IP and Backend NodePort
                         def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${minikubeIp}:30001 -f docker/frontend.Dockerfile .")
                         frontendImg.push()
                     }
@@ -48,7 +48,7 @@ pipeline {
 
         stage('Deploy to Minikube') {
             steps {
-                // Applying all layers of the 3-tier app
+                // Apply all 3 layers: DB, Backend, and Frontend
                 sh "kubectl apply -f k8s/configmap.yaml"
                 sh "kubectl apply -f k8s/mysql-deployment.yaml"
                 sh "kubectl apply -f k8s/backend-deployment.yaml"

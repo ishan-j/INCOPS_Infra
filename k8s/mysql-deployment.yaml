@@ -21,6 +21,15 @@ spec:
           value: "company_db"
         ports:
         - containerPort: 3306
+        # --- ADDED THIS SECTION ---
+        volumeMounts:
+        - name: mysql-initdb
+          mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+      - name: mysql-initdb
+        configMap:
+          name: mysql-init-script
+      # ---------------------------
 ---
 apiVersion: v1
 kind: Service
