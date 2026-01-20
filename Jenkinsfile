@@ -30,12 +30,12 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 script {
-                    docker.withRegistry('', 'dockerhub-creds') {
-                        // Pass the Minikube IP/Port as build-arg
-                        def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://$(minikube ip):30001 -f docker/frontend.Dockerfile .")
-                        frontendImg.push()
-                    }
-                }
+            // Get Minikube IP from the shell
+            def minikubeIp = sh(script: "minikube ip", returnStdout: true).trim()
+            docker.withRegistry('', 'dockerhub-creds') {
+                def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${minikubeIp}:30001 -f docker/frontend.Dockerfile .")
+                frontendImg.push()
+            }
             }
         }
         stage('Deploy to Minikube') {
