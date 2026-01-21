@@ -1,62 +1,114 @@
 pipeline {
     agent any
-    
+
     environment {
-        DOCKER_USER = 'ishanj10'
-        BACKEND_REPO = 'https://github.com/ishan-j/INCOPS_Backend.git'
-        FRONTEND_REPO = 'https://github.com/ishan-j/INCOPS_Frontend.git'
-        // Hardcode your Minikube IP if 'minikube ip' continues to fail in Jenkins
-        MINIKUBE_IP = '192.168.49.2' 
+        DOCKERHUB_USER = "ishanj10"
+        FRONTEND_IMAGE = "incops-frontend"
+        BACKEND_IMAGE  = "incops-backend"
+        KUBECONFIG = "$HOME/.kube/config"
     }
 
     stages {
-        stage('Cleanup & Checkout') {
+
+        stage("Show Jenkinsfile") {
+             steps {
+                    sh '''
+                    echo "================ JENKINSFILE CONTENT ================="
+                       cat Jenkinsfile
+                       echo "======================================================="
+                       '''
+                      }
+                    }
+
+
+        stage("Checkout Repos") {
             steps {
-                deleteDir()
-                // 1. Re-checkout the INFRA repo (this brings back docker/ and k8s/ folders)
-                checkout scm 
-                
-                // 2. Clone application code into subfolders
-                dir('backend') { git url: "${BACKEND_REPO}", branch: 'main' }
-                dir('frontend') { git url: "${FRONTEND_REPO}", branch: 'main' }
-                
-                sh "ls -R" // Verify the 'docker' folder is now visible
+                cleanWs()
+                dir("frontend") {
+                    git credentialsId: 'github-creds',
+                        url: 'https://github.com/ishan-j/INCOPS_Frontend.git'
+                }
+                dir("backend") {
+                    git credentialsId: 'github-creds',
+                        url: 'https://github.com/ishan-j/INCOPS_Backend.git'
+                }
+                dir("infra") {
+                    git credentialsId: 'github-creds',
+                        url: 'https://github.com/ishan-j/INCOPS_Infra.git'
+                }
             }
         }
 
-        stage('Build & Push Backend') {
+        stage("Build & Push Backend Image") {
             steps {
-                script {
-                    docker.withRegistry('', 'dockerhub-creds') {
-                        // Context is '.' so it can see the 'backend' folder
-                        def backendImg = docker.build("${DOCKER_USER}/incops-backend:latest", "-f docker/backend.Dockerfile .")
-                        backendImg.push()
+                dir("backend") {
+                    script {
+                        docker.withRegistry('', 'dockerhub-creds') {
+                            def img = docker.build("${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest")
+                            img.push()
+                        }
                     }
                 }
             }
         }
 
-        stage('Build & Push Frontend') {
+        stage("Build & Push Frontend Image") {
             steps {
-                script {
-                    docker.withRegistry('', 'dockerhub-creds') {
-                        // Using the IP defined in environment
-                        def frontendImg = docker.build("${DOCKER_USER}/incops-frontend:latest", "--build-arg REACT_APP_API_URL=http://${MINIKUBE_IP}:30001 -f docker/frontend.Dockerfile .")
-                        frontendImg.push()
+                dir("frontend") {
+                    script {
+                        docker.withRegistry('', 'dockerhub-creds') {
+                            def img = docker.build("${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest")
+                            img.push()
+                        }
                     }
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage("Deploy MySQL & Infra") {
             steps {
-                // Ensure we apply the new frontend-deployment.yaml you created
-                sh "kubectl apply -f k8s/configmap.yaml"
-                sh "kubectl apply -f k8s/init-db-config.yaml" // The table creator
-                sh "kubectl apply -f k8s/mysql-deployment.yaml"
-                sh "kubectl apply -f k8s/backend-deployment.yaml"
-                sh "kubectl apply -f k8s/frontend-deployment.yaml"
+                dir("infra/k8s") {
+                    sh """
+                    kubectl apply -f mysql-secret.yaml
+                    kubectl apply -f mysql-deployment.yaml
+                    kubectl apply -f mysql-service.yaml
+                    kubectl apply -f ingress.yaml
+                    """
+                }
             }
+        }
+
+        stage("Deploy Backend") {
+            steps {
+                dir("backend/k8s") {
+                    sh """
+                    kubectl apply -f backend-deployment.yaml
+                    kubectl apply -f backend-service.yaml
+                    kubectl rollout restart deployment backend
+                    """
+                }
+            }
+        }
+
+        stage("Deploy Frontend") {
+            steps {
+                dir("frontend/k8s") {
+                    sh """
+                    kubectl apply -f frontend-deployment.yaml
+                    kubectl apply -f frontend-service.yaml
+                    kubectl rollout restart deployment frontend
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ INCOPS deployed successfully"
+        }
+        failure {
+            echo "❌ Deployment failed — check logs"
         }
     }
 }
