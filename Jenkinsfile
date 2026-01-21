@@ -21,18 +21,24 @@ pipeline {
         }
 
         stage("Checkout Repos") {
-            steps {
-                dir("frontend") {
-                    git credentialsId: 'github-creds', url: 'https://github.com/ishan-j/INCOPS_Frontend.git'
-                }
-                dir("backend") {
-                    git credentialsId: 'github-creds', url: 'https://github.com/ishan-j/INCOPS_Backend.git'
-                }
-                dir("infra") {
-                    git credentialsId: 'github-creds', url: 'https://github.com/ishan-j/INCOPS_Infra.git'
-                }
-            }
+    steps {
+        dir("frontend") {
+            git credentialsId: 'github-creds', 
+                url: 'https://github.com/ishan-j/INCOPS_Frontend.git',
+                branch: 'main'  // Change to 'master' if your repo actually uses master
         }
+        dir("backend") {
+            git credentialsId: 'github-creds', 
+                url: 'https://github.com/ishan-j/INCOPS_Backend.git',
+                branch: 'main'
+        }
+        dir("infra") {
+            git credentialsId: 'github-creds', 
+                url: 'https://github.com/ishan-j/INCOPS_Infra.git',
+                branch: 'main'
+        }
+    }
+}
 
         stage("Build & Push Backend Image") {
             steps {
