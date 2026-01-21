@@ -5,36 +5,31 @@ pipeline {
         DOCKERHUB_USER = "ishanj10"
         FRONTEND_IMAGE = "incops-frontend"
         BACKEND_IMAGE  = "incops-backend"
-        KUBECONFIG = "$HOME/.kube/config"
+        // Fixed: Use curly braces for environment variables to avoid issues
+        KUBECONFIG = "${HOME}/.kube/config"
     }
 
     stages {
-
-        stage("Show Jenkinsfile") {
-             steps {
-                    sh '''
-                    echo "================ JENKINSFILE CONTENT ================="
-                       cat Jenkinsfile
-                       echo "======================================================="
-                       '''
-                      }
-                    }
-
+        // NEW: Cleanup stage to fix your < 1GB disk space issue
+        stage("System Cleanup") {
+            steps {
+                echo "Reclaiming disk space..."
+                sh 'docker system prune -f || true'
+                // Optional: Clean up workspace from previous failed runs
+                cleanWs()
+            }
+        }
 
         stage("Checkout Repos") {
             steps {
-                cleanWs()
                 dir("frontend") {
-                    git credentialsId: 'github-creds',
-                        url: 'https://github.com/ishan-j/INCOPS_Frontend.git'
+                    git credentialsId: 'github-creds', url: 'https://github.com/ishan-j/INCOPS_Frontend.git'
                 }
                 dir("backend") {
-                    git credentialsId: 'github-creds',
-                        url: 'https://github.com/ishan-j/INCOPS_Backend.git'
+                    git credentialsId: 'github-creds', url: 'https://github.com/ishan-j/INCOPS_Backend.git'
                 }
                 dir("infra") {
-                    git credentialsId: 'github-creds',
-                        url: 'https://github.com/ishan-j/INCOPS_Infra.git'
+                    git credentialsId: 'github-creds', url: 'https://github.com/ishan-j/INCOPS_Infra.git'
                 }
             }
         }
@@ -44,7 +39,10 @@ pipeline {
                 dir("backend") {
                     script {
                         docker.withRegistry('', 'dockerhub-creds') {
-                            def img = docker.build("${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest")
+                            /* FIX: Pointing to the specific Dockerfile path 
+                               '-f' specifies the file, '.' is the build context
+                            */
+                            def img = docker.build("${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest", "-f docker/backend.Dockerfile .")
                             img.push()
                         }
                     }
@@ -57,7 +55,8 @@ pipeline {
                 dir("frontend") {
                     script {
                         docker.withRegistry('', 'dockerhub-creds') {
-                            def img = docker.build("${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest")
+                            // Assuming Frontend follows the same pattern: docker/frontend.Dockerfile
+                            def img = docker.build("${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest", "-f docker/frontend.Dockerfile .")
                             img.push()
                         }
                     }
@@ -80,6 +79,7 @@ pipeline {
 
         stage("Deploy Backend") {
             steps {
+                // Ensure this path matches your Backend repo structure
                 dir("backend/k8s") {
                     sh """
                     kubectl apply -f backend-deployment.yaml
@@ -104,6 +104,11 @@ pipeline {
     }
 
     post {
+        always {
+            // Clean up the image from the Jenkins agent to save space for the next run
+            sh "docker rmi ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest || true"
+            sh "docker rmi ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest || true"
+        }
         success {
             echo "✅ INCOPS deployed successfully"
         }
