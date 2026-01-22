@@ -5,6 +5,7 @@ pipeline {
         DOCKERHUB_USER = "ishanj10"
         FRONTEND_IMAGE = "incops-frontend"
         BACKEND_IMAGE  = "incops-backend"
+        KUBECONFIG = "/var/lib/jenkins/.kube/config"
     }
 
     stages {
