@@ -6,13 +6,12 @@ pipeline {
         FRONTEND_IMAGE = "incops-frontend"
         BACKEND_IMAGE  = "incops-backend"
         KUBECONFIG     = "/var/lib/jenkins/.kube/config"
-
-        // CodeQL
-        CODEQL_HOME = "/opt/codeql"
-        PATH = "/opt/codeql:${env.PATH}"
+        SCANNER_HOME = tool 'sonar-scanner'
     }
 
     stages {
+
+        
 
         stage("System Cleanup") {
             steps {
@@ -44,43 +43,29 @@ pipeline {
             }
         }
 
-        stage("CodeQL Scan Backend") {
+        stage('SonarQube Analysis'){
             steps {
-                dir("backend") {
-                    sh '''
-                        rm -rf codeql-db-backend || true
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                    ${SCANNER_HOME}/bin/sonar-scanner \
+                    -Dsonar.projectKey=incops-fullstack \
+                    -Dsonar.projectName='INCOPS Fullstack' \
+                    -Dsonar.sources=backend,frontend \
+                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    """
+                }
+            }
 
-                        /opt/codeql/codeql database create codeql-db-backend \
-                            --language=javascript \
-                            --source-root=.
-
-                        /opt/codeql/codeql database analyze codeql-db-backend \
-                            /opt/codeql-queries/javascript/ql/src/codeql-suites/javascript-security.qls \
-                            --format=sarifv2 \
-                            --output=codeql-backend.sarif
-                    '''
+        }
+        stage("Quality Gate"){
+            steps{
+                timeout(time: 1, unit: 'HOURS'){
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
 
-        stage("CodeQL Scan Frontend") {
-            steps {
-                dir("frontend") {
-                    sh '''
-                        rm -rf codeql-db-frontend || true
-
-                        /opt/codeql/codeql database create codeql-db-frontend \
-                            --language=javascript \
-                            --source-root=.
-
-                        /opt/codeql/codeql database analyze codeql-db-frontend \
-                            /opt/codeql-queries/javascript/ql/src/codeql-suites/javascript-security.qls \
-                            --format=sarifv2 \
-                            --output=codeql-frontend.sarif
-                    '''
-                }
-            }
-        }
+        
 
         stage("Build & Push Backend Image") {
             steps {
