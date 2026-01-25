@@ -55,7 +55,7 @@ pipeline {
                             --source-root=.
 
                         /opt/codeql/codeql database analyze codeql-db-backend \
-                            /opt/codeql-queries/javascript/ql/src/codeql-suites/javascript-security.qls \
+                            javascript \
                             --format=sarifv2 \
                             --output=codeql-backend.sarif
                     '''
@@ -74,7 +74,7 @@ pipeline {
                             --source-root=.
 
                         /opt/codeql/codeql database analyze codeql-db-frontend \
-                            /opt/codeql-queries/javascript/ql/src/codeql-suites/javascript-security.qls \
+                            javascript \
                             --format=sarifv2 \
                             --output=codeql-frontend.sarif
                     '''
