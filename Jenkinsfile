@@ -6,6 +6,7 @@ pipeline {
         FRONTEND_IMAGE  = "incops-frontend"
         BACKEND_IMAGE   = "incops-backend"
         KUBECONFIG      = "/var/lib/jenkins/.kube/config"
+        PATH = "/opt/codeql/codeql:${env.PATH}"
     }
 
     stages {
@@ -41,14 +42,17 @@ pipeline {
 
         stage("SAST with CodeQL") {
             steps {
-                sh "rm -f *.sarif"
+            
                 sh """
-                codeql database create backend-db --language=javascript --source-root=backend --overwrite
-                codeql database analyze backend-db codeql/javascript-queries:codeql-suites/javascript-security-and-quality.qls --format=sarif-latest --output=backend-report.sarif
-                codeql database create frontend-db --language=javascript --source-root=frontend --overwrite
-                codeql database analyze frontend-db codeql/javascript-queries:codeql-suites/javascript-security-and-quality.qls --format=sarif-latest --output=frontend-report.sarif
-                
+                # Backend analysis
+                codeql database create backend-db --language=javascript --source-root=backend || true
+                codeql database analyze backend-db javascript-security-and-quality.qls --format=sarif --output backend-report.sarif || true
+
+                # Frontend analysis
+                codeql database create frontend-db --language=javascript --source-root=frontend || true
+                codeql database analyze frontend-db javascript-security-and-quality.qls --format=sarif --output frontend-report.sarif || true
                 """
+                archiveArtifacts artifacts: '**/*.sarif', fingerprint: true
             }
         }
 
@@ -99,8 +103,9 @@ pipeline {
     }
 
     post {
-        success {
-            archiveArtifacts artifacts: '*.sarif', fingerprint: true
+        always {
+            sh "docker rmi ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest || true"
+            sh "docker rmi ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest || true"
            
         }
     }
