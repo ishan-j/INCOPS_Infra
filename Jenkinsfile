@@ -2,17 +2,14 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = "ishanj10"
-        FRONTEND_IMAGE = "incops-frontend"
-        BACKEND_IMAGE  = "incops-backend"
-        KUBECONFIG     = "/var/lib/jenkins/.kube/config"
-        SCANNER_HOME = tool 'sonar-scanner'
+        DOCKERHUB_USER  = "ishanj10"
+        FRONTEND_IMAGE  = "incops-frontend"
+        BACKEND_IMAGE   = "incops-backend"
+        KUBECONFIG      = "/var/lib/jenkins/.kube/config"
+        SCANNER_HOME    = tool 'sonar-scanner'
     }
 
     stages {
-
-        
-
         stage("System Cleanup") {
             steps {
                 echo "Reclaiming disk space before build..."
@@ -43,24 +40,30 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis'){
+        stage("SAST with CodeQL") {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    ${SCANNER_HOME}/bin/sonar-scanner \
-                    -Dsonar.projectKey=incops-fullstack \
-                    -Dsonar.projectName='INCOPS Fullstack' \
-                    -Dsonar.sources=backend,frontend \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.token=$SONAR_TOKEN
-                    '''
-                }
+                sh """
+                    # Backend analysis
+                    codeql database create backend-db \
+                        --language=javascript \
+                        --source-root=backend || true
+
+                    codeql database analyze backend-db javascript-security-and-quality.qls \
+                        --format=sarif \
+                        --output backend-report.sarif || true
+
+                    # Frontend analysis
+                    codeql database create frontend-db \
+                        --language=javascript \
+                        --source-root=frontend || true
+
+                    codeql database analyze frontend-db javascript-security-and-quality.qls \
+                        --format=sarif \
+                        --output frontend-report.sarif || true
+                """
+                archiveArtifacts artifacts: '*.sarif', fingerprint: true
             }
-
         }
-       
-
-        
 
         stage("Build & Push Backend Image") {
             steps {
