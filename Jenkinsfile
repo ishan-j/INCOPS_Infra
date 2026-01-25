@@ -6,7 +6,6 @@ pipeline {
         FRONTEND_IMAGE  = "incops-frontend"
         BACKEND_IMAGE   = "incops-backend"
         KUBECONFIG      = "/var/lib/jenkins/.kube/config"
-        SCANNER_HOME    = tool 'sonar-scanner'
     }
 
     stages {
@@ -47,7 +46,7 @@ pipeline {
                     codeql database create backend-db \
                         --language=javascript \
                         --source-root=backend || true
-
+                    
                     codeql database analyze backend-db javascript-security-and-quality.qls \
                         --format=sarif \
                         --output backend-report.sarif || true
@@ -56,12 +55,11 @@ pipeline {
                     codeql database create frontend-db \
                         --language=javascript \
                         --source-root=frontend || true
-
+                    
                     codeql database analyze frontend-db javascript-security-and-quality.qls \
                         --format=sarif \
                         --output frontend-report.sarif || true
                 """
-                archiveArtifacts artifacts: '**/*.sarif', fingerprint: true
             }
         }
 
@@ -113,7 +111,8 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: '**/codeql-*.sarif', allowEmptyArchive: true
+            // This will now pick up the backend-report.sarif and frontend-report.sarif
+            archiveArtifacts artifacts: '*.sarif', allowEmptyArchive: true
 
             // Free disk space
             sh "docker rmi ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest || true"
