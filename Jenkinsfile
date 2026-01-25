@@ -41,24 +41,27 @@ pipeline {
 
         stage("SAST with CodeQL") {
             steps {
+                sh "rm -f *.sarif"
                 sh """
                     # Backend analysis
                     codeql database create backend-db \
                         --language=javascript \
-                        --source-root=backend || true
+                        --source-root=backend \
+                        --overwrite
                     
                     codeql database analyze backend-db javascript-security-and-quality.qls \
-                        --format=sarif \
-                        --output backend-report.sarif || true
+                        --format=sarif-latest \
+                        --output=backend-report.sarif
 
                     # Frontend analysis
                     codeql database create frontend-db \
-                        --language=javascript \
-                        --source-root=frontend || true
+                        --language=javascript \ 
+                        --source-root=frontend \
+                        --overwrite
                     
                     codeql database analyze frontend-db javascript-security-and-quality.qls \
-                        --format=sarif \
-                        --output frontend-report.sarif || true
+                        --format=sarif-latest \
+                        --output=frontend-report.sarif
                 """
             }
         }
@@ -111,12 +114,8 @@ pipeline {
 
     post {
         always {
-            // This will now pick up the backend-report.sarif and frontend-report.sarif
-            archiveArtifacts artifacts: '*.sarif', allowEmptyArchive: true
-
-            // Free disk space
-            sh "docker rmi ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest || true"
-            sh "docker rmi ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest || true"
+            archiveArtifacts artifacts: '*.sarif', fingerprint: true, allowEmptyArchive: false
+           
         }
     }
 }
