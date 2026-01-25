@@ -99,8 +99,8 @@ pipeline {
     }
 
     post {
-        success {
-            archiveArtifacts artifacts: '*.sarif', fingerprint: true
+        always {
+            archiveArtifacts artifacts: '*.sarif', fingerprint: true, allowEmptyArchive: true
            
         }
     }
