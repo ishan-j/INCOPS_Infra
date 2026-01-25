@@ -61,7 +61,7 @@ pipeline {
                         --format=sarif \
                         --output frontend-report.sarif || true
                 """
-                archiveArtifacts artifacts: '*.sarif', fingerprint: true
+                archiveArtifacts artifacts: '**/*.sarif', fingerprint: true
             }
         }
 
