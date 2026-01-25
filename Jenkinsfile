@@ -55,7 +55,7 @@ pipeline {
                             --source-root=.
 
                         codeql database analyze codeql-db-backend \
-                            github/codeql/javascript-security \
+                            --suite=security-and-quality \
                             --format=sarifv2 \
                             --output=codeql-backend.sarif
                     '''
@@ -74,7 +74,7 @@ pipeline {
                             --source-root=.
 
                         codeql database analyze codeql-db-frontend \
-                            github/codeql/javascript-security \
+                            --suite=security-and-quality \
                             --format=sarifv2 \
                             --output=codeql-frontend.sarif
                     '''
