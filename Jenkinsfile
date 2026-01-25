@@ -46,7 +46,14 @@ pipeline {
         stage('SonarQube Analysis'){
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh "${SCANNER_HOME}/bin/sonar-scanner ..."
+                    sh """
+                    ${SCANNER_HOME}/bin/sonar-scanner \
+                    -Dsonar.projectKey=incops-fullstack \
+                    -Dsonar.projectName='INCOPS Fullstack' \
+                    -Dsonar.sources=backend,frontend \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    """
                 }
             }
 
