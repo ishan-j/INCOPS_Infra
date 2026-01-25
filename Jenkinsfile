@@ -43,11 +43,19 @@ pipeline {
             steps {
                 sh "rm -f *.sarif"
                 sh """
-                   
-                codeql database create backend-db --language=javascript --source-root=backend --overwrite
-                codeql database analyze backend-db javascript-security-and-quality.qls --format=sarif-latest --output=backend-report.sarif
-                codeql database create frontend-db --language=javascript --source-root=frontend --overwrite
-                codeql database analyze frontend-db javascript-security-and-quality.qls --format=sarif-latest --output=frontend-report.sarif
+                codeql database create backend-db --language=javascript --source-root=backend --overwrite 
+
+                codeql database analyze backend-db \    
+                    codeql/javascript-queries:codeql-suites/javascript-security-and-quality.qls \
+                    --format=sarif-latest \
+                    --output=backend-report.sarif
+
+                codeql database create frontend-db --language=javascript --source-root=frontend --overwrite 
+                codeql database analyze frontend-db \
+                    codeql/javascript-queries:codeql-suites/javascript-security-and-quality.qls \
+                    --format=sarif-latest \
+                    --output=frontend-report.sarif 
+                
                 """
             }
         }
@@ -99,8 +107,8 @@ pipeline {
     }
 
     post {
-        always {
-            archiveArtifacts artifacts: '*.sarif', fingerprint: true, allowEmptyArchive: true
+        success {
+            archiveArtifacts artifacts: '*.sarif', fingerprint: true
            
         }
     }
