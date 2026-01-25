@@ -50,12 +50,12 @@ pipeline {
                     sh '''
                         rm -rf codeql-db-backend || true
 
-                        codeql database create codeql-db-backend \
+                        /opt/codeql/codeql database create codeql-db-backend \
                             --language=javascript \
                             --source-root=.
 
-                        codeql database analyze codeql-db-backend \
-                            --suite=security-and-quality \
+                        /opt/codeql/codeql database analyze codeql-db-backend \
+                            /opt/codeql-queries/javascript/ql/src/codeql-suites/javascript-security.qls \
                             --format=sarifv2 \
                             --output=codeql-backend.sarif
                     '''
@@ -69,12 +69,12 @@ pipeline {
                     sh '''
                         rm -rf codeql-db-frontend || true
 
-                        codeql database create codeql-db-frontend \
+                        /opt/codeql/codeql database create codeql-db-frontend \
                             --language=javascript \
                             --source-root=.
 
-                        codeql database analyze codeql-db-frontend \
-                            --suite=security-and-quality \
+                        /opt/codeql/codeql database analyze codeql-db-frontend \
+                            /opt/codeql-queries/javascript/ql/src/codeql-suites/javascript-security.qls \
                             --format=sarifv2 \
                             --output=codeql-frontend.sarif
                     '''
