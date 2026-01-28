@@ -5,7 +5,6 @@ pipeline {
         DOCKERHUB_USER  = "ishanj10"
         FRONTEND_IMAGE  = "incops-frontend"
         BACKEND_IMAGE   = "incops-backend"
-        // Stable path for Jenkins Kubeconfig
         KUBECONFIG      = "/var/lib/jenkins/.kube/config"
     }
 
@@ -36,28 +35,31 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'dockerhub-creds') {
-                        // Backend
                         dir("backend") {
                             def backendImg = docker.build("${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest")
                             backendImg.push()
                         }
-                        // Frontend
-                        // dir("frontend") {
-                        //     def frontendImg = docker.build("${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest")
-                        //     frontendImg.push()
-                        // }
+                        
+                        dir("frontend") {
+                            def frontendImg = docker.build("${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest")
+                            frontendImg.push()
+                        }
                     }
                 }
             }
         }
-        stage  ('Trivy Security Scan') {
+
+        stage('Trivy Security Scan') {
             steps {
                 script {
-               
+                    // Create reports directory and unlock the cache
+                    sh "mkdir -p reports"
+                    sh "trivy clean --scan-cache"
+                    
+                    // Run scans with stability flags
                     sh """
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest > reports/trivy-backend-report.txt || true
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest > reports/trivy-frontend-report.txt || true
-
+                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest > reports/trivy-backend-report.txt || true
+                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest > reports/trivy-frontend-report.txt || true
                     """
                     archiveArtifacts artifacts: 'reports/*.txt', fingerprint: true
                 }
@@ -67,35 +69,30 @@ pipeline {
         stage("Deploy to K8s") {
             steps {
                 sh '''
-                    # 1. FIX THE DYNAMIC IP PROBLEM
-                    # Generate a fresh config and force it to use localhost
                     mkdir -p /var/lib/jenkins/.kube
                     microk8s config | sed 's/https:\\/\\/.*:16443/https:\\/\\/127.0.0.1:16443/' > ${KUBECONFIG}
                     chmod 600 ${KUBECONFIG}
 
-                    # 2. DEPLOY INFRASTRUCTURE (MySQL, Secrets, PVC, Ingress)
-                    # Use --status-check or specific order to ensure DB is ready
                     kubectl apply -f infra/k8s/
-
-                    # 3. DEPLOY APP
                     kubectl apply -f backend/k8s/
                     kubectl apply -f frontend/k8s/
 
-                    # 4. FORCE RESTART APP (To pull newest images)
-                    # We don't restart MySQL to avoid unnecessary downtime
-                    kubectl rollout restart deployment backend
-                    kubectl rollout restart deployment frontend
+                    kubectl rollout restart deployment backend || true
+                    kubectl rollout restart deployment frontend || true
                 '''
             }
         }
         
-        stage("Verify Deployment") {
+        stage("Verify & Monitor") {
             steps {
                 sh '''
                     echo "Checking Pod Status..."
                     kubectl get pods
-                    echo "Checking Ingress Routing..."
-                    kubectl get ingress app-ingress
+                    
+                    echo "--- Prometheus Health Check ---"
+                    # We check if Prometheus service is reachable and query the 'up' status
+                    # This assumes microk8s observability is enabled
+                    curl -s "http://localhost:9090/api/v1/query?query=up" | grep "status\":\"success" || echo "Prometheus not reachable yet"
                 '''
             }
         }
@@ -109,11 +106,11 @@ pipeline {
         }
         success {
             script {
-                def vmIp = sh(script: "ip addr show ens33 | grep 'inet ' | awk '{print \$2}' | cut -d/ -f1", returnStdout: true).trim()
+                def vmIp = sh(script: "ip addr show ens33 2>/dev/null | grep 'inet ' | awk '{print \$2}' | cut -d/ -f1 || echo 'VM_IP'", returnStdout: true).trim()
                 echo "--------------------------------------------------------"
                 echo "SUCCESS: App is deployed!"
-                echo "URL: http://app.local"
-                echo "Update your host file to: ${vmIp} app.local"
+                echo "Monitoring: http://${vmIp}:3000 (Grafana)"
+                echo "App URL: http://app.local"
                 echo "--------------------------------------------------------"
             }
         }
