@@ -53,7 +53,8 @@ pipeline {
         stage  ('Trivy Security Scan') {
             steps {
                 script {
-                   sh "trivy image --format template --template '@/home/om/trivy-templates/html.tpl' -o trivy-report.html ishanj10/incops-frontend"
+                //    sh "trivy image --format template --template '@/home/om/trivy-templates/html.tpl' -o trivy-report.html ishanj10/incops-frontend"
+                   sh "trivy image --scanners vuln --format template --template '@/home/om/trivy-templates/html.tpl' -o trivy-report.html ishanj10/incops-frontend
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
