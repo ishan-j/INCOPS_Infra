@@ -50,6 +50,22 @@ pipeline {
                 }
             }
         }
+        stage  ('Trivy Security Scan') {
+            steps {
+                script {
+                   sh "trivy image --format template --template '@/home/om/trivy-templates/html.tpl' -o trivy-report.html ishanj10/incops-frontend"
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.',
+                        reportFiles: 'trivy-report.html',
+                        reportName: 'Trivy Security Report',
+                        reportTitles: 'Frontend Image Scan'
+                    ])
+                }
+            }
+        }
 
         stage("Deploy to K8s") {
             steps {
