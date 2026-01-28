@@ -54,7 +54,7 @@ pipeline {
             steps {
                 script {
                
-                    sh "trivy image --severity CRITICAL --scanners vuln --no-progress --format template --template '@/home/om/trivy-templates/html.tpl' -o trivy-report.html ishanj10/incops-frontend"
+                    sh "trivy image --severity CRITICAL,HIGH --no-progress --scanners vuln ishanj10/incops-frontend"
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
