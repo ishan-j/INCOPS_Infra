@@ -7,6 +7,8 @@ spec:
   selector:
     matchLabels:
       app: mysql
+  strategy:
+    type: Recreate # Required for single-node PVCs to avoid lock errors
   template:
     metadata:
       labels:
@@ -20,3 +22,15 @@ spec:
             name: mysql-secret
         ports:
         - containerPort: 3306
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql        # Where data lives
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d/ # Where init script lives
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim
+      - name: init-scripts
+        configMap:
+          name: mysql-init-sql
