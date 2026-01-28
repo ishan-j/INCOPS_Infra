@@ -6,7 +6,6 @@ pipeline {
         FRONTEND_IMAGE  = "incops-frontend"
         BACKEND_IMAGE   = "incops-backend"
         KUBECONFIG      = "/var/lib/jenkins/.kube/config"
-        PATH = "/opt/codeql/codeql:${env.PATH}"
     }
 
     stages {
@@ -39,23 +38,6 @@ pipeline {
                 }
             }
         }
-
-        // stage("SAST with CodeQL") {
-        //     steps {
-            
-        //         sh """
-        //         # Backend analysis
-        //         codeql database create backend-db --language=javascript --source-root=backend || true
-        //         codeql database analyze backend-db javascript-security-and-quality.qls --format=sarif --output backend-report.sarif || true
-
-        //         # Frontend analysis
-        //         codeql database create frontend-db --language=javascript --source-root=frontend || true
-        //         codeql database analyze frontend-db javascript-security-and-quality.qls --format=sarif --output frontend-report.sarif || true
-        //         """
-        //         archiveArtifacts artifacts: '**/*.sarif', fingerprint: true
-        //     }
-        // }
-
         stage("Build & Push Backend Image") {
             steps {
                 dir("backend") {
@@ -91,6 +73,7 @@ pipeline {
         stage("Deploy to K8s") {
             steps {
                 sh '''
+                    microk8s config | sed 's/https:\\/\\/.*:16443/https:\\/\\/127.0.0.1:16443/' > ${KUBECONFIG}
                     kubectl apply -f infra/k8s/
                     kubectl apply -f backend/k8s/
                     kubectl apply -f frontend/k8s/
