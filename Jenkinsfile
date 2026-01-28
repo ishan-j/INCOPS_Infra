@@ -54,21 +54,21 @@ pipeline {
             }
         }
 
-        stage("Build & Push Frontend Image") {
-            steps {
-                dir("frontend") {
-                    script {
-                        docker.withRegistry('', 'dockerhub-creds') {
-                            def img = docker.build(
-                                "${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest",
-                                "."
-                            )
-                            img.push()
-                        }
-                    }
-                }
-            }
-        }
+        // stage("Build & Push Frontend Image") {
+        //     steps {
+        //         dir("frontend") {
+        //             script {
+        //                 docker.withRegistry('', 'dockerhub-creds') {
+        //                     def img = docker.build(
+        //                         "${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest",
+        //                         "."
+        //                     )
+        //                     img.push()
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         stage("Deploy to K8s") {
             steps {
