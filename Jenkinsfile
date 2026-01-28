@@ -54,10 +54,12 @@ pipeline {
             steps {
                 script {
                
-                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') { 
+                    sh """
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest > reports/trivy-backend-report.txt || true
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest > reports/trivy-frontend-report.txt || true
 
-                        sh "trivy image --skip-db-update --severity CRITICAL --no-progress ishanj10/incops-frontend"
-                    }
+                    """
+                    archiveArtifacts artifacts: 'reports/*.txt', fingerprint: true
                 }
             }
         }
