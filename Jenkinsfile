@@ -54,12 +54,13 @@ pipeline {
             steps {
                 script {
                
+                    sh "mkdir -p reports"
+                    sh "trivy clean --scan-cache"
                     sh """
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest > reports/trivy-backend-report.txt || true
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest > reports/trivy-frontend-report.txt || true
-
+                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest > reports/trivy-backend-report.txt
+                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest > reports/trivy-frontend-report.txt
                     """
-                    archiveArtifacts artifacts: 'reports/*.txt', fingerprint: true
+                    archiveArtifacts artifacts: 'reports/*.txt', allowEmptyArchive: true
                 }
             }
         }
