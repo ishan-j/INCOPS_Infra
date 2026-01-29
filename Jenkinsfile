@@ -54,23 +54,23 @@ pipeline {
                 script {
                     sh "mkdir -p reports"
                     sh "trivy clean --scan-cache"
-                    sh "trivy image --download-db-only --no-progress"
+                    echo "Downloading Trivy HTML template..."
 
-                    sh "curl -s https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o html.tpl"
+                    sh "curl -s https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o local_template.tpl"
 
                     sh """
                         trivy image --no-progress --severity HIGH,CRITICAL \
-                            --format template --template "@html.tpl" \
+                            --format template --template "@local_template.tpl" \
                             --output reports/trivy-backend-report.html \
                             ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest
 
                         trivy image --no-progress --severity HIGH,CRITICAL \
-                            --format template --template "@html.tpl" \
+                            --format template --template "@local_template.tpl" \
                             --output reports/trivy-frontend-report.html \
                             ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest
                     """
             
-                    // This is the line that needs to change!
+                    
                     archiveArtifacts artifacts: 'reports/*.html', fingerprint: true
                 }
             }
