@@ -54,12 +54,22 @@ pipeline {
                 script {
                    
                     sh "mkdir -p reports"
-                    sh "trivy clean --scan-cache"
-                    
-                    
+                    sh "trivy image --download-db-only --no-progress"
+
                     sh """
-                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ishanj10/incops-backend:latest > reports/trivy-backend-report.txt || true
-                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ishanj10/incops-frontend:latest > reports/trivy-frontend-report.txt || true
+                        # 2. Use -o (output) instead of > for better file writing
+                        # 3. Use 'table' format for readability in text files
+                        trivy image --no-progress \
+                            --severity HIGH,CRITICAL \
+                            --format table \
+                            --output reports/trivy-backend-report.txt \
+                            ishanj10/incops-backend:latest
+
+                        trivy image --no-progress \
+                            --severity HIGH,CRITICAL \
+                            --format table \
+                            --output reports/trivy-frontend-report.txt \
+                            ishanj10/incops-frontend:latest
                     """
                     archiveArtifacts artifacts: 'reports/*.txt', fingerprint: true
                 }
