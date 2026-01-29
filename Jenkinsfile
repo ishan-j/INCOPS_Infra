@@ -54,22 +54,25 @@ pipeline {
                 script {
                    
                     sh "mkdir -p reports"
+
+                    sh "trivy clean --scan-cache"
+                    
                     sh "trivy image --download-db-only --no-progress"
 
                     sh """
-                        # 2. Use -o (output) instead of > for better file writing
-                        # 3. Use 'table' format for readability in text files
+                        # Backend Scan - Using variables for user and image names
                         trivy image --no-progress \
                             --severity HIGH,CRITICAL \
-                            --format table \
-                            --output reports/trivy-backend-report.txt \
-                            ishanj10/incops-backend:latest
+                            --format template --template "@contrib/html.tpl" \
+                            --output reports/trivy-backend-report.html \
+                            ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest
 
+                        # Frontend Scan - Using variables
                         trivy image --no-progress \
                             --severity HIGH,CRITICAL \
-                            --format table \
-                            --output reports/trivy-frontend-report.txt \
-                            ishanj10/incops-frontend:latest
+                            --format template --template "@contrib/html.tpl" \
+                            --output reports/trivy-frontend-report.html \
+                            ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest
                     """
                     archiveArtifacts artifacts: 'reports/*.txt', fingerprint: true
                 }
