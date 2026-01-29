@@ -74,7 +74,7 @@ pipeline {
                             --output reports/trivy-frontend-report.html \
                             ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest
                     """
-                    archiveArtifacts artifacts: 'reports/*.txt', fingerprint: true
+                    archiveArtifacts artifacts: 'reports/*.html', fingerprint: true
                 }
             }
         }
@@ -101,6 +101,7 @@ pipeline {
                 sh "mkdir -p reports"
                 sh "sync; echo 3 | sudo tee /proc/sys/vm/drop_caches || true"
                 sh '''
+                    # 1. Frontend Scan
                     docker run --user root --rm \
                         --add-host="app.local:host-gateway" \
                         -v $(pwd)/reports:/zap/wrk/:rw \
@@ -108,9 +109,18 @@ pipeline {
                         -t http://app.local \
                         -m 1 \
                         -I -r zap-frontend-report.html || true
-                    echo "Scan complete."
+                    echo "Cooling down system for 10 seconds..."
+                    sleep 10
+
+                    # 2. Backend Scan
+                    docker run --user root --rm \
+                        --add-host="app.local:host-gateway" \
+                        -v $(pwd)/reports:/zap/wrk/:rw \
+                        zaproxy/zap-stable zap-baseline.py \
+                        -t http://app.local/ \
+                        -m 2 -I -r zap-backend-report.html || true
                 '''
-                archiveArtifacts artifacts: 'reports/zap-*.html', fingerprint: true
+                archiveArtifacts artifacts: 'reports/*.html', fingerprint: true
             }
 
 
