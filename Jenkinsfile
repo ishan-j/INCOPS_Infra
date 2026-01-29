@@ -52,28 +52,25 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 script {
-                   
                     sh "mkdir -p reports"
-
                     sh "trivy clean --scan-cache"
-                    
                     sh "trivy image --download-db-only --no-progress"
 
                     sh """
-                        # Backend Scan - Using variables for user and image names
                         trivy image --no-progress \
                             --severity HIGH,CRITICAL \
                             --format template --template "@contrib/html.tpl" \
                             --output reports/trivy-backend-report.html \
                             ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest
 
-                        # Frontend Scan - Using variables
                         trivy image --no-progress \
                             --severity HIGH,CRITICAL \
                             --format template --template "@contrib/html.tpl" \
                             --output reports/trivy-frontend-report.html \
                             ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest
                     """
+            
+                    // This is the line that needs to change!
                     archiveArtifacts artifacts: 'reports/*.html', fingerprint: true
                 }
             }
@@ -117,10 +114,10 @@ pipeline {
                         --add-host="app.local:host-gateway" \
                         -v $(pwd)/reports:/zap/wrk/:rw \
                         zaproxy/zap-stable zap-baseline.py \
-                        -t http://app.local/ \
-                        -m 2 -I -r zap-backend-report.html || true
+                        -t http://app.local/api \
+                        -m 1 -I -r zap-backend-report.html || true
                 '''
-                archiveArtifacts artifacts: 'reports/*.html', fingerprint: true
+                archiveArtifacts artifacts: 'reports/zap-*.html', fingerprint: true
             }
 
 
