@@ -86,15 +86,16 @@ pipeline {
         stage('DAST') {
             steps {
                 sh "mkdir -p reports"
+                sh "sync; echo 3 | sudo tee /proc/sys/vm/drop_caches || true"
                 sh '''
-                   docker run --user root --rm \
-                    --add-host="app.local:host-gateway" \
-                    -v $(pwd)/reports:/zap/wrk/:rw \
-                    zaproxy/zap-stable zap-baseline.py \ 
-                    -t http://app.local \
-                    -m 1 \
-                    -I -r zap-frontend-report.html || true
-                   echo "Scan complete."  
+                    docker run --user root --rm \
+                        --add-host="app.local:host-gateway" \
+                        -v $(pwd)/reports:/zap/wrk/:rw \
+                        zaproxy/zap-stable zap-baseline.py \
+                        -t http://app.local \
+                        -m 1 \
+                        -I -r zap-frontend-report.html || true
+                    echo "Scan complete."
                 '''
                 archiveArtifacts artifacts: 'reports/zap-*.html', fingerprint: true
             }
