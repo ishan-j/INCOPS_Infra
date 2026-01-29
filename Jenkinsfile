@@ -58,8 +58,8 @@ pipeline {
                     
                     
                     sh """
-                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest > reports/trivy-backend-report.txt || true
-                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest > reports/trivy-frontend-report.txt || true
+                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ishanj10/incops-backend:latest > reports/trivy-backend-report.txt || true
+                    trivy image --skip-db-update --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL ishanj10/incops-frontend:latest > reports/trivy-frontend-report.txt || true
                     """
                     archiveArtifacts artifacts: 'reports/*.txt', fingerprint: true
                 }
