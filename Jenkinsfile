@@ -60,14 +60,12 @@ pipeline {
 
                     sh """
                         trivy image --no-progress --severity HIGH,CRITICAL \
-                            --format template --template "@${WORKSPACE}/html.tpl" \
-                            --output reports/trivy-backend-report.html \
+                            --format template --template "@html.tpl" \
                             --output reports/trivy-backend-report.html \
                             ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest
 
                         trivy image --no-progress --severity HIGH,CRITICAL \
-                            --format template --template "@${WORKSPACE}/html.tpl" \
-                            --output reports/trivy-frontend-report.html \
+                            --format template --template "@html.tpl" \
                             --output reports/trivy-frontend-report.html \
                             ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest
                     """
