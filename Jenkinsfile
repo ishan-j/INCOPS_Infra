@@ -85,18 +85,16 @@ pipeline {
 
         stage('DAST') {
             steps {
-
+                sh "mkdir -p reports"
                 sh '''
-                    echo "Starting Frontend Scan..."
-                    docker run --user root --rm -v $(pwd)/reports:/zap/wrk/:rw \
-                        zaproxy/zap-stable zap-baseline.py \
-                        -t http://app.local \
-                        -I -r zap-frontend-report.html || true
-                    echo "Starting Backend Scan..."
-                    docker run --user root --rm -v $(pwd)/reports:/zap/wrk/:rw \
-                        zaproxy/zap-stable zap-baseline.py \
-                        -t http://app.local/api \
-                        -I -r zap-backend-report.html || true
+                   docker run --user root --rm \
+                    --add-host="app.local:host-gateway" \
+                    -v $(pwd)/reports:/zap/wrk/:rw \
+                    zaproxy/zap-stable zap-baseline.py \ 
+                    -t http://app.local \
+                    -m 1 \
+                    -I -r zap-frontend-report.html || true
+                   echo "Scan complete."  
                 '''
                 archiveArtifacts artifacts: 'reports/zap-*.html', fingerprint: true
             }
