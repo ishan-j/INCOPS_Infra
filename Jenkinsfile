@@ -40,10 +40,10 @@ pipeline {
                             backendImg.push()
                         }
                         
-                        dir("frontend") {
-                            def frontendImg = docker.build("${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest")
-                            frontendImg.push()
-                        }
+                        // dir("frontend") {
+                        //     def frontendImg = docker.build("${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest")
+                        //     frontendImg.push()
+                        // }
                     }
                 }
             }
