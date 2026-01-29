@@ -59,15 +59,15 @@ pipeline {
                     sh "curl -s https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o html.tpl"
 
                     sh """
-                        trivy image --no-progress \
-                            --severity HIGH,CRITICAL \
-                            --format template --template "@html.tpl" \
+                        trivy image --no-progress --severity HIGH,CRITICAL \
+                            --format template --template "@${WORKSPACE}/html.tpl" \
+                            --output reports/trivy-backend-report.html \
                             --output reports/trivy-backend-report.html \
                             ${DOCKERHUB_USER}/${BACKEND_IMAGE}:latest
 
-                        trivy image --no-progress \
-                            --severity HIGH,CRITICAL \
-                            --format template --template "@html.tpl" \
+                        trivy image --no-progress --severity HIGH,CRITICAL \
+                            --format template --template "@${WORKSPACE}/html.tpl" \
+                            --output reports/trivy-frontend-report.html \
                             --output reports/trivy-frontend-report.html \
                             ${DOCKERHUB_USER}/${FRONTEND_IMAGE}:latest
                     """
